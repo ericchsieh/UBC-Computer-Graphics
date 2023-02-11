@@ -1,0 +1,348 @@
+/////////////////////////////////////////////////////////////////////////////////////////
+//  UBC CPSC 314,  September 2022, Assignment 1 
+/////////////////////////////////////////////////////////////////////////////////////////
+
+// http://localhost:8000/creative.html 
+// Cmd + Shift + R
+// Parts (a)-(h) are woth 3 points together.
+// Question a)
+
+console.log('CPSC 314 Assignment 1 by Eric Hsieh');
+console.log('updated teapot');
+
+// SETUP RENDERER & SCENE
+var canvas = document.getElementById('canvas');
+var scene = new THREE.Scene();
+var renderer = new THREE.WebGLRenderer();
+
+  // set background colour to 0xRRGGBB  where RR,GG,BB are values in [00,ff] in hexadecimal, i.e., [0,255] 
+renderer.setClearColor(0x000000);     
+canvas.appendChild(renderer.domElement);
+
+// SETUP CAMERA
+var camera = new THREE.PerspectiveCamera(30,1,0.1,1000); // view angle, aspect ratio, near, far
+camera.position.set(0,12,20);
+camera.lookAt(0,0,0);
+scene.add(camera);
+
+// SETUP ORBIT CONTROLS OF THE CAMERA
+var controls = new THREE.OrbitControls(camera);
+controls.damping = 0.2;
+controls.autoRotate = false;
+
+// ADAPT TO WINDOW RESIZE
+function resize() {
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+}
+
+// EVENT LISTENER RESIZE
+window.addEventListener('resize',resize);
+resize();
+
+//SCROLLBAR FUNCTION DISABLE
+window.onscroll = function () {
+     window.scrollTo(0,0);
+   }
+
+/////////////////////////////////////	
+// ADD LIGHTS  and define a simple material that uses lighting
+/////////////////////////////////////	
+
+light = new THREE.PointLight(0xF1EB9C);
+scene.add(light);
+ambientLight = new THREE.AmbientLight(0x606060, 0.3);
+scene.add(ambientLight);
+
+light1 = new THREE.DirectionalLight(0x7FFF00, 1);
+light1.position.set(0,7,0);
+light1.target.position.set(0, 0, 0);
+light1.castShadow = true;
+const dlHelper = new THREE.DirectionalLightHelper(light1, 3);
+scene.add(light1, dlHelper);
+
+
+const spotLight = new THREE.SpotLight( 0x9e00ff, 8.0, 50, 0.35, 0.7);
+spotLight.position.set( -2, 9, 10 );
+spotLight.castShadow = true;
+spotLight.shadow.mapSize.width = 1024;
+spotLight.shadow.mapSize.height = 1024;
+spotLight.shadow.camera.near = 5;
+spotLight.shadow.camera.far = 4;
+spotLight.shadow.camera.fov = 30;
+
+const dlHelper1 = new THREE.DirectionalLightHelper(spotLight, 3);
+scene.add(spotLight, dlHelper1);
+scene.add( spotLight );
+
+///////////////////////////////////////////////////////////////////////
+//  Materials
+///////////////////////////////////////////////////////////////////////
+var diffuseMaterial = new THREE.MeshLambertMaterial( {color: 0xffffff} );
+var diffuseMaterial2 = new THREE.MeshLambertMaterial( {color: 0xffffff, side: THREE.DoubleSide} );
+var basicMaterial = new THREE.MeshBasicMaterial( {color: 0xF4EA56} ); //Ball Light
+var myMaterial = new THREE.MeshBasicMaterial( {color: 0x7fff7f} );
+
+///////////////////////////////////////////////////////////////////////
+//   sphere, representing the light 
+///////////////////////////////////////////////////////////////////////
+
+sphereGeometry = new THREE.SphereGeometry(0.3, 32, 32);    // radius, segments, segments
+sphere = new THREE.Mesh(sphereGeometry, basicMaterial);
+sphere.position.set(0,4,2);
+sphere.position.set(light.position.x, light.position.y, light.position.z);
+scene.add(sphere);
+
+///////////////////////////////////////////////////////////////////////////////////////////
+//  OBJECTS
+///////////////////////////////////////////////////////////////////////////////////////////
+
+
+/////////////////////////////////////	
+// WORLD COORDINATE FRAME
+/////////////////////////////////////	
+
+var worldFrame = new THREE.AxesHelper(5) ;
+scene.add(worldFrame);
+
+
+/////////////////////////////////////	
+// FLOOR with texture
+/////////////////////////////////////	
+
+floorTexture = new THREE.TextureLoader().load('images/woodfloor.jpg');
+floorTexture.wrapS = floorTexture.wrapT = THREE.RepeatWrapping;
+floorTexture.repeat.set(1, 1);
+floorMaterial = new THREE.MeshBasicMaterial({ map: floorTexture, side: THREE.DoubleSide });
+floorGeometry = new THREE.PlaneBufferGeometry(15, 15);
+floor = new THREE.Mesh(floorGeometry, floorMaterial);
+floor.position.y = -1.1;
+floor.rotation.x = Math.PI / 2;
+scene.add(floor);
+
+///////////////////////////////////////////////////////////////////////
+//  mcc:  multi-colour cube     [https://stemkoski.github.io/Three.js/HelloWorld.html] 
+///////////////////////////////////////////////////////////////////////
+
+  // Create an array of materials to be used in a cube, one for each side
+var cubeMaterialArray = [];
+  // order to add materials: x+,x-,y+,y-,z+,z-
+cubeMaterialArray.push( new THREE.MeshStandardMaterial( { color: 0xff3333 } ) );
+cubeMaterialArray.push( new THREE.MeshStandardMaterial( { color: 0xff8800 } ) );
+cubeMaterialArray.push( new THREE.MeshStandardMaterial( { color: 0xffff33 } ) );
+cubeMaterialArray.push( new THREE.MeshStandardMaterial( { color: 0x33ff33 } ) );
+cubeMaterialArray.push( new THREE.MeshBasicMaterial( { color: 0x3333ff } ) );
+cubeMaterialArray.push( new THREE.MeshBasicMaterial( { color: 0x8833ff } ) );
+  // Cube parameters: width (x), height (y), depth (z), 
+  //        (optional) segments along x, segments along y, segments along z
+var mccGeometry = new THREE.BoxGeometry( 1.5, 1.5, 1.5, 1, 1, 1 );
+mcc = new THREE.Mesh( mccGeometry, cubeMaterialArray );
+mcc.position.set(-4,-0.34,0);
+scene.add( mcc );	
+
+/////////////////////////////////////////////////////////////////////////
+// twisting stack of three cubes
+/////////////////////////////////////////////////////////////////////////
+geometry_cube1 = new THREE.BoxGeometry(1.5, 1.5, 1.5, 1, 1, 1)
+const material_cube1 = new THREE.MeshStandardMaterial( {color: 0xffff33} );
+const cube1 = new THREE.Mesh( geometry_cube1, material_cube1, diffuseMaterial);
+cube1.position.set(-4,1.16,0);
+cube1.rotation.set(0,0.52,0);
+scene.add(cube1);
+
+
+/////////////////////////////////////////////////////////////////////////
+// Crate
+/////////////////////////////////////////////////////////////////////////
+var textureLoader = new THREE.TextureLoader();
+	crateTexture = textureLoader.load("textures/crate0_diffuse.png");
+	crateBumpMap = textureLoader.load("textures/crate0_bump.png");
+	crateNormalMap = textureLoader.load("textures/crate0_normal.png");
+	
+	// Create mesh with these textures
+	crate = new THREE.Mesh(
+    new THREE.BoxGeometry(3,3,3), 
+    new THREE.MeshPhongMaterial({
+			color:0xffffff,
+			map:crateTexture,
+			bumpMap:crateBumpMap,
+			normalMap:crateNormalMap
+		  })
+	);
+	scene.add(crate);
+	crate.position.set(2.5, 0.42, 2.5);
+	crate.receiveShadow = true;
+	crate.castShadow = true;
+
+/////////////////////////////////////////////////////////////////////////
+// Pawn
+/////////////////////////////////////////////////////////////////////////
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////
+//  create my material
+/////////////////////////////////////////////////////////////////////////////////////
+
+var myMaterial = new THREE.ShaderMaterial( {
+//	uniforms: uniforms,
+        uniforms: { textureSampler: {type: 't', value: floorTexture}},
+	vertexShader: document.getElementById( 'myVertexShader' ).textContent,
+	fragmentShader: document.getElementById( 'myFragmentShader' ).textContent
+} );
+
+var ctx = renderer.context;
+ctx.getShaderInfoLog = function () { return '' };   // stops shader warnings, seen in some browsers
+
+/////////////////////////////////////////////////////////////////////////////////////
+//  Object loaded from OBJ file, rendered using myMaterial
+// Table Object
+/////////////////////////////////////////////////////////////////////////////////////
+
+var manager = new THREE.LoadingManager();
+        manager.onProgress = function ( item, loaded, total ) {
+	console.log( item, loaded, total );
+};
+
+var onProgress = function ( xhr ) {
+	if ( xhr.lengthComputable ) {
+		var percentComplete = xhr.loaded / xhr.total * 100;
+		console.log( Math.round(percentComplete, 2) + '% downloaded' );
+	}
+};
+var onError = function ( xhr ) {
+};
+var loader = new THREE.OBJLoader( manager );
+loader.load( 'obj/pawn.obj', function ( object ) {
+	object.traverse( function ( child ) {
+		if ( child instanceof THREE.Mesh ) {
+			child.material = diffuseMaterial;
+		}
+	} );
+  object.scale.set(0.2,0.2,0.2);
+  object.position.set(0.7, -1.1, -6.7)
+  object.rotation.set(-1.5708,0,0);
+  
+	scene.add( object );
+}, onProgress, onError );
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+// CHESS Pieces
+///////////////////////////////////////////////////////////////////////////////////////
+var loader = new THREE.OBJLoader( manager );
+loader.load( 'obj/pawn.obj', function ( object2 ) {
+	object2.traverse( function ( child ) {
+		if ( child instanceof THREE.Mesh ) {
+			child.material = diffuseMaterial;
+		}
+	} );
+  object2.scale.set(0.2,0.2,0.2);
+  object2.position.set(2.45, -1.1, -6.7)
+  object2.rotation.set(-1.5708,0,0);
+  scene.add( object2 );
+}, onProgress, onError );
+
+
+var loader = new THREE.OBJLoader( manager );
+loader.load( 'obj/pawn.obj', function ( object3 ) {
+	object3.traverse( function ( child ) {
+		if ( child instanceof THREE.Mesh ) {
+			child.material = diffuseMaterial;
+		}
+	} );
+  object3.scale.set(0.2,0.2,0.2);
+  object3.position.set(4.2, -1.1, -6.7)
+  object3.rotation.set(-1.5708,0,0);
+  scene.add( object3 );
+}, onProgress, onError );
+
+
+var loader = new THREE.OBJLoader( manager );
+loader.load( 'obj/pawn.obj', function ( object4 ) {
+	object4.traverse( function ( child ) {
+		if ( child instanceof THREE.Mesh ) {
+			child.material = diffuseMaterial;
+		}
+	} );
+  object4.scale.set(0.2,0.2,0.2);
+  object4.position.set(5.95, -1.1, -6.7)
+  object4.rotation.set(-1.5708,0,0);
+  scene.add( object4 );
+}, onProgress, onError );
+
+
+var loader = new THREE.OBJLoader( manager );
+loader.load( 'obj/pawn.obj', function ( object5 ) {
+	object5.traverse( function ( child ) {
+		if ( child instanceof THREE.Mesh ) {
+			child.material = diffuseMaterial;
+		}
+	} );
+  object5.scale.set(0.2,0.2,0.2);
+  object5.position.set(7.7, -1.1, -6.7)
+  object5.rotation.set(-1.5708,0,0);
+  scene.add( object5 );
+}, onProgress, onError );
+
+
+var loader = new THREE.OBJLoader( manager );
+loader.load( 'obj/pawn.obj', function ( object6 ) {
+	object6.traverse( function ( child ) {
+		if ( child instanceof THREE.Mesh ) {
+			child.material = diffuseMaterial;
+		}
+	} );
+  object6.scale.set(0.2,0.2,0.2);
+  object6.position.set(9.45, -1.1, -6.7)
+  object6.rotation.set(-1.5708,0,0);
+  scene.add( object6 );
+}, onProgress, onError );
+
+
+var loader = new THREE.OBJLoader( manager );
+loader.load( 'obj/pawn.obj', function ( objectx ) {
+	objectx.traverse( function ( child ) {
+		if ( child instanceof THREE.Mesh ) {
+			child.material = diffuseMaterial;
+		}
+	} );
+  objectx.scale.set(0.2,0.2,0.2);
+  objectx.position.set(-1.0, 1.96, -4.5)
+  objectx.rotation.set(0.2,0.5,0);
+  scene.add( objectx );
+}, onProgress, onError );
+
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+// LISTEN TO KEYBOARD
+///////////////////////////////////////////////////////////////////////////////////////
+
+var keyboard = new THREEx.KeyboardState();
+function checkKeyboard() {
+  if ((keyboard.pressed("W")) && (light.position.y <= 5.0)) {
+    console.log('W pressed');
+    light.position.y += 0.1;
+  } else if ((keyboard.pressed("S")) && (light.position.y >= -5.0))
+    light.position.y -= 0.1;
+  if ((keyboard.pressed("A")) && (light.position.x >= -5.0))
+    light.position.x -= 0.1;
+  else if ((keyboard.pressed("D")) && (light.position.x <= 5.0))
+    light.position.x += 0.1;
+  sphere.position.set(light.position.x, light.position.y, light.position.z);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+// UPDATE CALLBACK
+///////////////////////////////////////////////////////////////////////////////////////
+
+function update() {
+  checkKeyboard();
+  requestAnimationFrame(update);      // requests the next update call;  this creates a loop
+  renderer.render(scene, camera);
+}
+
+update();
+

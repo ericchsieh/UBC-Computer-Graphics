@@ -1,0 +1,276 @@
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <link rel="shortcut icon" href="#">
+    <title>CPSC 314 Assignment 5 Sep 2022</title>
+    <style>
+      body { margin: 0; } canvas {width: 100%;
+      height: 100% }
+    </style>
+  </head>
+  <body>
+    <div id="canvas"></div>
+<!--    <script src="js/three.js"></script> -->
+    <script src="js/three.min.js"></script>
+    <script src="js/SourceLoader.js"></script>
+    <script src="js/OrbitControls.js"></script>
+    <script src="js/KeyboardState.js"></script> <!-- By Jerome Etienne: http://jetienne.com/ -->
+    <script src="js/OBJLoader.js"></script>   
+
+<script id="floorVertShader" type="x-shader/x-vertex">
+uniform vec2 uvScale;
+varying vec2 vUv;
+varying vec3 vcsNormal;
+varying vec3 ocsPosition;
+varying vec3 vcsPosition;
+void main()
+{       
+  vUv = uv;
+  ocsPosition = position;
+  vec4 vcsP = modelViewMatrix * vec4(ocsPosition,1.0);
+  vcsPosition = vcsP.xyz;
+  gl_Position = projectionMatrix * vcsP;   // pass on point in CCS
+  vcsNormal = normalMatrix * normal;       // normalMatrix is the transpose-inv of the rotation matrix
+}
+</script>
+
+<script id="myVertShader" type="x-shader/x-vertex">
+uniform vec2 uvScale;
+varying vec2 vUv;
+varying vec3 vcsNormal;
+varying vec3 ocsPosition;
+varying vec3 vcsPosition;
+void main()
+{       
+  vUv = uvScale * uv;
+  ocsPosition = position;
+  vec4 vcsP = modelViewMatrix * vec4(ocsPosition,1.0);
+  vcsPosition = vcsP.xyz;
+  gl_Position = projectionMatrix * vcsP;   // pass on point in CCS
+  vcsNormal = normalMatrix * normal;       // normalMatrix is the transpose-inv of the rotation matrix
+}
+</script>
+
+<script id="skyBoxVertShader" type="x-shader/x-vertex">
+varying vec2 vUv;
+void main()
+{       
+  vec4 vcsP = modelViewMatrix * vec4(position,1.0);
+  gl_Position = projectionMatrix * vcsP;   // pass on point in CCS
+  vUv = uv;
+}
+</script>
+
+<script id="holeyFragShader" type="x-shader/x-fragment">
+uniform vec3 lightPosition;
+uniform vec3 myColor;
+varying vec3 vcsNormal;
+varying vec3 vcsPosition;
+varying vec3 ocsPosition;
+
+void main( void ) {
+  vec3 L = vec3(0,0,0);
+  L = lightPosition - vcsPosition;
+  L = normalize(L);
+  vec3 N = normalize(vcsNormal);
+  float i = dot(N,L);
+  vec3 color = vec3(0,1,1) * i;
+  
+  float x = ocsPosition.x;     // object center
+  float y = ocsPosition.y;
+  float z = ocsPosition.z;
+  
+  float dx = x - floor(x+0.5);
+  float dy = y - floor(y+0.5);
+  float dz = z - floor(z+0.5);
+
+  // specific point of sphere radius
+  // r = sqrt(dx*dx+dy*dy+dz*dz);
+  //
+  // (x - 600.0)*(x - 600.0)+(y - 700.0)*(y - 700.0) = r*r
+  /*
+  if (sqrt(dx*dx+dy*dy+dz*dz) == 1) {
+    discard;
+  }
+  */
+  
+  gl_FragColor = vec4(color,1.0);
+}
+</script>
+
+// TODO c)
+<script id="toonFragShader" type="x-shader/x-fragment">
+uniform vec3 lightPosition;
+uniform vec3 toonColor;
+varying vec3 vcsNormal;
+varying vec3 vcsPosition;
+
+void main( void ) {
+  vec3 L = vec3(0,0,0);
+  L = lightPosition - vcsPosition;
+  L = normalize(L);
+
+  vec3 N = normalize(vcsNormal);
+  
+  float i = dot(N,L);
+
+  if (i < 0.25) {
+    i = 0.0;
+  } else if (i<0.5) {
+    i = 0.25;
+  } else if (i<0.75) {
+    i = 0.5;
+  } else if (i<1.0) {
+    i = 0.75;
+  } else if (i >= 1.0) {
+    i = 1.0;
+  }
+
+  vec3 toonColor = toonColor*i;
+  gl_FragColor = vec4(toonColor,1.0); 
+}
+</script>
+
+
+
+<script id="envmapFragShader" type="x-shader/x-fragment">
+uniform sampler2D uPosxTexture;
+uniform sampler2D uPosyTexture;
+uniform sampler2D uPoszTexture;
+uniform sampler2D uNegxTexture;
+uniform sampler2D uNegyTexture;
+uniform sampler2D uNegzTexture;
+uniform vec3 myColor;
+uniform mat4 matrixWorld;
+uniform vec3 lightPosition;
+varying vec3 vcsNormal;
+varying vec3 ocsPosition;
+varying vec3 vcsPosition;
+void main( void ) {
+  vec3 I = normalize(vcsPosition - ocsPosition);
+  vec3 N = normalize(vcsNormal);
+  vec3 R_temp = normalize(reflect(I,N)); 
+  vec4 R = vec4(R_temp, 1.0);
+  R = R * matrixWorld;
+ 
+  if (abs(R.y) > abs(R.x) && abs(R.y) > abs(R.z)) { ///
+    float u = ((R.x/R.y) + 1.0)/2.0;
+    float v = ((-R.z/R.y) + 1.0)/2.0;
+    gl_FragColor = vec4(texture2D(uNegyTexture, vec2 (u,v)));
+  }
+  
+  if (abs(R.x) > abs(R.y) && abs(R.x) > abs(R.z)) {
+    float u = ((R.z/R.x) + 1.0)/2.0;
+    float v = ((-R.y/R.x) + 1.0)/2.0;
+    gl_FragColor = vec4(texture2D(uNegxTexture, vec2 (u,v)));
+  }
+
+  if (abs(R.z) > abs(R.x) && abs(R.z) > abs(R.y)) {
+    float u = ((-R.x/R.z) + 1.0)/2.0;
+    float v = ((-R.y/R.z) + 1.0)/2.0;
+    gl_FragColor = vec4(texture2D(uNegzTexture, vec2 (u,v)));
+  }
+
+  if (R.y >= abs(R.x) && R.y >= abs(R.z)) {
+    float u = ((-R.x/R.y) + 1.0)/2.0;
+    float v = ((-R.z/R.y) + 1.0)/2.0;
+    gl_FragColor = vec4(texture2D(uPosyTexture, vec2 (u,v)));
+  }
+  
+  if (R.x >= abs(R.y) && R.x >= abs(R.z)) {
+    float u = ((R.z/R.x) + 1.0)/2.0;
+    float v = ((R.y/R.x) + 1.0)/2.0;
+    gl_FragColor = vec4(texture2D(uPosxTexture, vec2 (u,v)));
+  }
+  
+  if (R.z >= abs(R.x) && R.z >= abs(R.y)) {
+    float u = (-(R.x/R.z) + 1.0)/2.0;
+    float v = ((R.y/R.z) + 1.0)/2.0;
+    gl_FragColor = vec4(texture2D(uPoszTexture, vec2 (u,v)));
+  }
+
+ //gl_FragColor = vec4(N,1.0);
+}
+</script>
+
+<script id="floorFragShader" type="x-shader/x-fragment">
+uniform vec3 lightPosition;
+uniform vec3 myColor;
+varying vec3 vcsPosition;
+varying vec3 ocsPosition;
+uniform sampler2D normalMap;
+uniform sampler2D textureMap;
+varying vec2 vUv;
+
+void main( void ) {
+  vec3 color = texture2D(textureMap, vUv).xyz;
+  //
+  vec3 normaltex = texture2D(normalMap, vUv).xyz;
+  normaltex = normaltex*2.0 - 1.0;
+  vec3 N = vec3(normaltex.x, normaltex.z, -normaltex.y);
+  vec3 L = normalize(lightPosition - vcsPosition);
+  float i = dot(N,L);
+
+  gl_FragColor = vec4(i*color,1.0);
+}
+</script>
+
+
+<script id="pnoiseFragShader" type="x-shader/x-fragment">
+float screenWidth = 2.0;
+float PI = 3.1416;
+
+// perlin noise code from: 
+//   https://gist.github.com/patriciogonzalezvivo/670c22f3966e662d2f83
+
+float rand(vec2 c){
+	return fract(sin(dot(c.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
+
+float noise(vec2 p, float freq ){
+	float unit = screenWidth/freq;
+	vec2 ij = floor(p/unit);
+	vec2 xy = mod(p,unit)/unit;
+	//xy = 3.*xy*xy-2.*xy*xy*xy;
+	xy = .5*(1.-cos(PI*xy));
+	float a = rand((ij+vec2(0.,0.)));
+	float b = rand((ij+vec2(1.,0.)));
+	float c = rand((ij+vec2(0.,1.)));
+	float d = rand((ij+vec2(1.,1.)));
+	float x1 = mix(a, b, xy.x);
+	float x2 = mix(c, d, xy.x);
+	return mix(x1, x2, xy.y);
+}
+
+float pNoise(vec2 p, int res){
+	float persistance = .5;
+	float n = 0.;
+	float normK = 0.;
+	float f = 4.;
+	float amp = 1.;
+	int iCount = 0;
+	for (int i = 0; i<50; i++){
+		n+=amp*noise(p, f);
+		f*=2.;
+		normK+=amp;
+		amp*=persistance;
+		if (iCount == res) break;
+		iCount++;
+	}
+	float nf = n/normK;
+	return nf*nf*nf*nf;
+}
+
+varying vec3 ocsPosition;
+varying vec3 vcsPosition;
+void main( void ) {
+  int levels = 1;
+  float i=pNoise(vcsPosition.xy,levels);
+  gl_FragColor = vec4(i,i,i,1.0);
+}
+</script>
+
+<script src="a5.js"></script>
+</body>
+</html>
+
